@@ -1,0 +1,42 @@
+name: golangci-lint
+env:
+  CGO_ENABLED: 0
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - main
+  pull_request:
+jobs:
+  gotest:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+      - run: go test -mod=vendor -v ./...
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: v1.31
+          only-new-issues: true
+  goreleaser:
+    name: release
+    runs-on: ubuntu-latest
+    needs:
+      - gotest
+      - golangci
+    steps:
+      - uses: goreleaser/goreleaser-action@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
