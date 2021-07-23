@@ -1,6 +1,6 @@
 module github.com/bakins/gcs-signed-url
 
-go 1.15
+go 1.16
 
 require (
 	cloud.google.com/go/storage v1.14.0
