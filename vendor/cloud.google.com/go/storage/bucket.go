@@ -130,7 +130,8 @@ func (b *BucketHandle) DefaultObjectACL() *ACLHandle {
 }
 
 // Object returns an ObjectHandle, which provides operations on the named object.
-// This call does not perform any network operations.
+// This call does not perform any network operations such as fetching the object or verifying its existence.
+// Use methods on ObjectHandle to perform network operations.
 //
 // name must consist entirely of valid UTF-8-encoded runes. The full specification
 // for valid object names can be found at:
@@ -336,6 +337,10 @@ type BucketAttrs struct {
 	// Typical values are "multi-region", "region" and "dual-region".
 	// This field is read-only.
 	LocationType string
+
+	// The project number of the project the bucket belongs to.
+	// This field is read-only.
+	ProjectNumber uint64
 }
 
 // BucketPolicyOnly is an alias for UniformBucketLevelAccess.
@@ -596,6 +601,7 @@ func newBucket(b *raw.Bucket) (*BucketAttrs, error) {
 		PublicAccessPrevention:   toPublicAccessPrevention(b.IamConfiguration),
 		Etag:                     b.Etag,
 		LocationType:             b.LocationType,
+		ProjectNumber:            b.ProjectNumber,
 	}, nil
 }
 
@@ -949,8 +955,10 @@ func (b *BucketHandle) LockRetentionPolicy(ctx context.Context) error {
 		metageneration = b.conds.MetagenerationMatch
 	}
 	req := b.c.raw.Buckets.LockRetentionPolicy(b.name, metageneration)
-	_, err := req.Context(ctx).Do()
-	return err
+	return runWithRetry(ctx, func() error {
+		_, err := req.Context(ctx).Do()
+		return err
+	})
 }
 
 // applyBucketConds modifies the provided call using the conditions in conds.
